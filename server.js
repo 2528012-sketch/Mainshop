@@ -7,7 +7,6 @@ app.use(express.json());
 app.use(cors());
 
 // MongoDB Connection
-// MongoDB Connection
 mongoose.connect('mongodb://localhost:27017/shopkeeper_complete_db')
   .then(() => console.log('Connected to MongoDB successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
@@ -17,25 +16,25 @@ const transactionSchema = new mongoose.Schema({
   store: { type: String, required: true },
   amount: { type: Number, required: true },
   type: { type: String, enum: ['CREDIT', 'DEBIT'], required: true },
-  phoneNumber: { type: String, required: true },
+  phoneNumber: { type: String, required: true, maxlength: 10, minlength: 10 },
   displayAmount: { type: String, required: true },
   date: { type: Date, default: Date.now }
 });
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
 const inventorySchema = new mongoose.Schema({
-  name: { type: Map, of: String, required: true }, // { en: '', hi: '' }
+  name: { type: Map, of: String, required: true },
   sku: { type: String, required: true, unique: true },
   price: { type: Number, required: true },
   stock: { type: Number, required: true },
   category: { type: String, required: true },
-  threshold: { type: Number, default: 5 }
+  threshold: { type: Number, required: true, default: 5 } // Defined during creation
 });
 const Inventory = mongoose.model('Inventory', inventorySchema);
 
 const khataSchema = new mongoose.Schema({
   customerName: { type: String, required: true },
-  phoneNumber: { type: String, required: true },
+  phoneNumber: { type: String, required: true, maxlength: 10, minlength: 10 },
   balance: { type: Number, required: true },
   date: { type: Date, default: Date.now }
 });
@@ -44,7 +43,7 @@ const Khata = mongoose.model('Khata', khataSchema);
 const profileSchema = new mongoose.Schema({
   shopName: { type: String, required: true },
   ownerName: { type: String, required: true },
-  phone: { type: String, required: true },
+  phone: { type: String, required: true, maxlength: 10, minlength: 10 },
   address: { type: String, required: true },
   gstin: { type: String, required: true }
 });
@@ -55,7 +54,6 @@ const Profile = mongoose.model('Profile', profileSchema);
 // 1. Transactions Ledger
 app.get('/api/transactions', async (req, res) => {
   try {
-    const lang = req.query.lang || 'en';
     const txs = await Transaction.find().sort({ date: -1 });
     const formatted = txs.map(t => ({
       id: t._id,
@@ -71,23 +69,35 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
-// POS Checkout / Transaction Creation
 app.post('/api/transactions', async (req, res) => {
   try {
-    const { storeNames, amount, type, phoneNumber, paymentMethod, customerName } = req.body;
+    const { storeNames, amount, type, phoneNumber, paymentMethod, customerName, itemsCart } = req.body;
     
-    if (!phoneNumber || !phoneNumber.trim()) {
-      return res.status(400).json({ success: false, error: 'Customer phone number is compulsory!' });
+    if (!phoneNumber || phoneNumber.trim().length !== 10) {
+      return res.status(400).json({ success: false, error: 'Customer phone number must be exactly 10 digits!' });
     }
 
-    // Exclude Credit Checkouts from immediate cash sales revenue ledger
+    if (itemsCart && Array.isArray(itemsCart)) {
+      for (let cartItem of itemsCart) {
+        const product = await Inventory.findById(cartItem.id);
+        if (!product) {
+          return res.status(404).json({ success: false, error: `Product not found` });
+        }
+        if (product.stock < cartItem.quantity) {
+          return res.status(400).json({ success: false, error: `Insufficient stock for item. Available: ${product.stock}` });
+        }
+        product.stock -= cartItem.quantity;
+        await product.save();
+      }
+    }
+
     if (paymentMethod === 'KHATA') {
       await Khata.create({
         customerName: customerName || 'Credit Customer',
         phoneNumber,
         balance: amount
       });
-      return res.json({ success: true, message: 'Added to Khata ledger successfully and omitted from immediate sales.' });
+      return res.json({ success: true, message: 'Added to Khata ledger successfully and inventory updated.' });
     }
 
     const displayAmountSymbol = type === 'CREDIT' ? '+' : '-';
@@ -96,7 +106,7 @@ app.post('/api/transactions', async (req, res) => {
       amount,
       type,
       phoneNumber,
-      displayAmount: `${displayAmountSymbol}$${amount.toFixed(2)}`
+      displayAmount: `${displayAmountSymbol}₹${amount.toFixed(2)}`
     });
 
     res.json({ success: true, data: tx });
@@ -134,9 +144,27 @@ app.post('/api/inventory', async (req, res) => {
       price,
       stock,
       category,
-      threshold: threshold || 5
+      threshold: parseInt(threshold, 10) || 5
     });
     res.json({ success: true, data: item });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Active Total Stock Input Update Endpoint
+app.put('/api/inventory/:id', async (req, res) => {
+  try {
+    const { stock, price } = req.body;
+    const updateData = {};
+    if (stock !== undefined) updateData.stock = parseInt(stock, 10);
+    if (price !== undefined) updateData.price = parseFloat(price);
+
+    const updatedItem = await Inventory.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    if (!updatedItem) {
+      return res.status(404).json({ success: false, error: 'Inventory item not found' });
+    }
+    res.json({ success: true, data: updatedItem });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -152,7 +180,6 @@ app.get('/api/khata', async (req, res) => {
   }
 });
 
-// Khata Settlement: Mark as paid -> removes credit entry and records green settlement transaction in ledger
 app.delete('/api/khata/:id', async (req, res) => {
   try {
     const khataRecord = await Khata.findById(req.params.id);
@@ -165,7 +192,7 @@ app.delete('/api/khata/:id', async (req, res) => {
       amount: khataRecord.balance,
       type: 'CREDIT',
       phoneNumber: khataRecord.phoneNumber,
-      displayAmount: `+$${khataRecord.balance.toFixed(2)}`
+      displayAmount: `+₹${khataRecord.balance.toFixed(2)}`
     });
 
     await Khata.findByIdAndDelete(req.params.id);
@@ -175,7 +202,7 @@ app.delete('/api/khata/:id', async (req, res) => {
   }
 });
 
-// 4. Financial Reports
+// 4. Financial Reports & Current Inventory Asset Summary
 app.get('/api/reports/financial', async (req, res) => {
   try {
     const txs = await Transaction.find();
@@ -187,13 +214,33 @@ app.get('/api/reports/financial', async (req, res) => {
       if (t.type === 'DEBIT') totalExpenses += t.amount;
     });
 
+    // Compute current inventory assets and metrics
+    const inventoryItems = await Inventory.find();
+    let totalInventoryValue = 0;
+    let totalStockUnits = 0;
+    let lowStockAlertsCount = 0;
+
+    inventoryItems.forEach(item => {
+      totalStockUnits += item.stock;
+      totalInventoryValue += (item.stock * item.price);
+      if (item.stock <= item.threshold) {
+        lowStockAlertsCount++;
+      }
+    });
+
     res.json({
       success: true,
       data: {
         totalRevenue,
         totalExpenses,
         netBalance: totalRevenue - totalExpenses,
-        totalTransactions: txs.length
+        totalTransactions: txs.length,
+        inventoryMetrics: {
+          totalInventoryValue,
+          totalStockUnits,
+          lowStockAlertsCount,
+          totalUniqueProducts: inventoryItems.length
+        }
       }
     });
   } catch (err) {
@@ -201,25 +248,13 @@ app.get('/api/reports/financial', async (req, res) => {
   }
 });
 
-// 5. OCR Scanner Simulation
-app.post('/api/ocr/scan', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      extractedStore: 'Automated Receipt Supermart',
-      extractedAmount: 250.00,
-      extractedPhone: '+919876543210'
-    }
-  });
-});
-
-// 6. Shop Profile (Compulsory Address and GSTIN)
+// 5. Shop Profile
 app.get('/api/profile', async (req, res) => {
   try {
     const profile = await Profile.findOne() || {
       shopName: 'My Retail Store',
       ownerName: 'Admin',
-      phone: '+91 9876543210',
+      phone: '9876543210',
       address: '',
       gstin: ''
     };
@@ -233,6 +268,9 @@ app.post('/api/profile', async (req, res) => {
   try {
     const { shopName, ownerName, phone, address, gstin } = req.body;
     
+    if (!phone || phone.trim().length !== 10) {
+      return res.status(400).json({ success: false, error: 'Shop owner phone number must be exactly 10 digits.' });
+    }
     if (!address || !address.trim() || !gstin || !gstin.trim()) {
       return res.status(400).json({ success: false, error: 'Shop Address and GSTIN are strictly compulsory before saving changes.' });
     }
