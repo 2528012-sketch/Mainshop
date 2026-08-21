@@ -73,6 +73,7 @@ const translations = {
     ledgerMetrics: "Financial Ledger Metrics",
     totalRevenue: "Total Revenue (Credits)",
     netBalance: "Net Balance",
+    totalInventoryCost: "Total Inventory Cost",
     recentLedger: "Recent Transaction Ledger",
     refreshLedger: "Refresh Ledger",
     noTransactions: "No transactions recorded yet.",
@@ -161,6 +162,7 @@ const translations = {
     ledgerMetrics: "वित्तीय बहीखाता मेट्रिक्स",
     totalRevenue: "कुल राजस्व (क्रेडिट)",
     netBalance: "शुद्ध शेष (Net Balance)",
+    totalInventoryCost: "कुल इन्वेंट्री लागत",
     recentLedger: "हालिया लेनदेन बहीखाता",
     refreshLedger: "बहीखाता रीफ्रेश करें",
     noTransactions: "अभी तक कोई लेनदेन दर्ज नहीं किया गया है।",
@@ -180,9 +182,11 @@ const translations = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('inventory');
+  // Set default initial tab to 'reports' instead of 'inventory'
+  const [activeTab, setActiveTab] = useState('reports');
   const [lang, setLang] = useState('en');
   const [theme, setTheme] = useState('dark');
+  const [inventory, setInventory] = useState([]);
 
   const currentTheme = themes[theme];
   const t = translations[lang];
@@ -215,9 +219,9 @@ export default function App() {
       </header>
 
       <main style={styles.mainContent}>
-        {activeTab === 'reports' && <ReportsView lang={lang} t={t} theme={currentTheme} />}
-        {activeTab === 'inventory' && <InventoryView lang={lang} t={t} theme={currentTheme} />}
-        {activeTab === 'billing' && <BillingView lang={lang} t={t} theme={currentTheme} />}
+        {activeTab === 'reports' && <ReportsView lang={lang} t={t} theme={currentTheme} inventory={inventory} />}
+        {activeTab === 'inventory' && <InventoryView lang={lang} t={t} theme={currentTheme} inventory={inventory} setInventory={setInventory} />}
+        {activeTab === 'billing' && <BillingView lang={lang} t={t} theme={currentTheme} inventory={inventory} />}
         {activeTab === 'ocr' && <OCRView t={t} theme={currentTheme} />}
         {activeTab === 'khata' && <KhataView t={t} theme={currentTheme} />}
         {activeTab === 'profile' && <ProfileView t={t} theme={currentTheme} />}
@@ -228,21 +232,13 @@ export default function App() {
 
 /* ================= COMPONENT VIEWS ================= */
 
-function InventoryView({ lang, t, theme }) {
-  const [inventory, setInventory] = useState([]);
+function InventoryView({ lang, t, theme, inventory, setInventory }) {
   const [productName, setProductName] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [msg, setMsg] = useState({ text: '', type: '' });
 
-  const fetchInventory = () => {
-    // Inventory cleared out by default or fetched empty
-    setInventory([]);
-  };
-
-  useEffect(() => { fetchInventory(); }, [lang]);
-
-  const handleAddItem = async (e) => {
+  const handleAddItem = (e) => {
     e.preventDefault();
     const newItem = {
       id: 'ID-' + Math.floor(1000 + Math.random() * 9000),
@@ -258,7 +254,6 @@ function InventoryView({ lang, t, theme }) {
   const handleStockUpdate = (id, updatedStockVal) => {
     const parsedStock = parseInt(updatedStockVal, 10);
     if (isNaN(parsedStock) || parsedStock < 0) return;
-
     setInventory(prev => prev.map(item => item.id === id ? { ...item, stock: parsedStock } : item));
   };
 
@@ -286,37 +281,19 @@ function InventoryView({ lang, t, theme }) {
 
       <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border }}>
         <h2 style={styles.cardTitle}>{t.stockManagement}</h2>
-
         <div style={styles.tableHeader}>
           <span style={{ flex: 2 }}>{t.tableProdName}</span>
           <span style={{ flex: 1 }}>{t.tablePrice}</span>
           <span style={{ flex: 1.5 }}>{t.tableStockInput}</span>
         </div>
-
         {inventory.length === 0 ? <p style={styles.subText}>{t.noStock}</p> : (
           inventory.map(item => (
             <div key={item.id} style={{ ...styles.tableRow, borderColor: theme.border, alignItems: 'center' }}>
               <span style={{ flex: 2, fontWeight: '500' }}>{item.name}</span>
               <span style={{ flex: 1 }}>₹{Number(item.price).toFixed(2)}</span>
               <div style={{ flex: 1.5, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input 
-                  type="number" 
-                  min="0"
-                  defaultValue={item.stock} 
-                  key={`${item.id}-${item.stock}`} 
-                  id={`stock-input-${item.id}`}
-                  style={{ width: '60px', padding: '6px', textAlign: 'center', background: theme.inputBg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: '4px' }} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    const val = document.getElementById(`stock-input-${item.id}`).value;
-                    handleStockUpdate(item.id, val);
-                  }} 
-                  style={{ ...styles.submitBtn, padding: '6px 10px', fontSize: '12px' }}
-                >
-                  {t.updateBtn}
-                </button>
+                <input type="number" min="0" defaultValue={item.stock} id={`stock-input-${item.id}`} style={{ width: '60px', padding: '6px', textAlign: 'center', background: theme.inputBg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: '4px' }} />
+                <button type="button" onClick={() => { const val = document.getElementById(`stock-input-${item.id}`).value; handleStockUpdate(item.id, val); }} style={{ ...styles.submitBtn, padding: '6px 10px', fontSize: '12px' }}>{t.updateBtn}</button>
               </div>
             </div>
           ))
@@ -326,8 +303,7 @@ function InventoryView({ lang, t, theme }) {
   );
 }
 
-function BillingView({ lang, t, theme }) {
-  const [inventory, setInventory] = useState([]);
+function BillingView({ lang, t, theme, inventory }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState([]);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -335,10 +311,6 @@ function BillingView({ lang, t, theme }) {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [gstRate, setGstRate] = useState(5);
   const [msg, setMsg] = useState({ text: '', type: '' });
-
-  useEffect(() => {
-    setInventory([]);
-  }, [lang]);
 
   const filteredInventory = inventory.filter(item => 
     searchTerm.trim() && item.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -427,33 +399,14 @@ function BillingView({ lang, t, theme }) {
                 <div style={{ padding: '10px', fontSize: '13px', opacity: 0.7 }}>{t.noMatch}</div>
               ) : (
                 filteredInventory.map(item => (
-                  <div 
-                    key={item.id} 
-                    style={{ padding: '10px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                  >
+                  <div key={item.id} style={{ padding: '10px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <strong>{item.name}</strong>
                       <div style={{ fontSize: '12px', opacity: 0.8 }}>₹{item.price} | Stock: {item.stock}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <input 
-                        type="number" 
-                        min="1" 
-                        max={item.stock} 
-                        defaultValue="1" 
-                        id={`qty-input-${item.id}`} 
-                        style={{ width: '45px', padding: '4px', textAlign: 'center', background: theme.inputBg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: '4px' }} 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          const inputVal = document.getElementById(`qty-input-${item.id}`).value;
-                          addToCart(item, inputVal);
-                        }} 
-                        style={{ ...styles.submitBtn, padding: '5px 10px', fontSize: '12px' }}
-                      >
-                        {t.addBtn}
-                      </button>
+                      <input type="number" min="1" max={item.stock} defaultValue="1" id={`qty-input-${item.id}`} style={{ width: '45px', padding: '4px', textAlign: 'center', background: theme.inputBg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: '4px' }} />
+                      <button type="button" onClick={() => { const inputVal = document.getElementById(`qty-input-${item.id}`).value; addToCart(item, inputVal); }} style={{ ...styles.submitBtn, padding: '5px 10px', fontSize: '12px' }}>{t.addBtn}</button>
                     </div>
                   </div>
                 ))
@@ -469,13 +422,7 @@ function BillingView({ lang, t, theme }) {
               <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${theme.border}` }}>
                 <span style={{ flex: 1.5 }}>{item.name}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1.5, justifyContent: 'flex-end' }}>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    value={item.quantity} 
-                    onChange={(e) => updateCartItemQuantity(item.id, e.target.value)} 
-                    style={{ width: '45px', padding: '4px', textAlign: 'center', background: theme.inputBg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: '4px' }}
-                  />
+                  <input type="number" min="1" value={item.quantity} onChange={(e) => updateCartItemQuantity(item.id, e.target.value)} style={{ width: '45px', padding: '4px', textAlign: 'center', background: theme.inputBg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: '4px' }} />
                   <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                   <button type="button" onClick={() => removeFromCart(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px' }}>X</button>
                 </div>
@@ -487,7 +434,6 @@ function BillingView({ lang, t, theme }) {
 
       <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border }}>
         <h2 style={styles.cardTitle}>{t.billSummary}</h2>
-        
         <div style={{ background: theme.inputBg, padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>{t.subtotal}</span>
@@ -519,15 +465,7 @@ function BillingView({ lang, t, theme }) {
           </div>
           <div>
             <label style={styles.label}>{t.customerPhone}</label>
-            <input 
-              type="tel" 
-              maxLength="10" 
-              value={phoneNumber} 
-              onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-              placeholder={t.phonePlaceholder} 
-              required 
-              style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} 
-            />
+            <input type="tel" maxLength="10" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder={t.phonePlaceholder} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} />
           </div>
           <div>
             <label style={styles.label}>{t.checkoutMode}</label>
@@ -554,21 +492,17 @@ function OCRView({ t, theme }) {
     const file = e.target.files[0];
     if (file) {
       setImagePreview(URL.createObjectURL(file));
-      runOCR(file);
+      runOCR();
     }
   };
 
-  const runOCR = (file) => {
+  const runOCR = () => {
     setScanning(true);
     setProgress(50);
     setTimeout(() => {
       setScanning(false);
       setProgress(100);
-      setExtractedData({
-        extractedStore: 'Retail Store',
-        extractedAmount: 150.00,
-        extractedPhone: '9876543210'
-      });
+      setExtractedData({ extractedStore: 'Retail Store', extractedAmount: 150.00, extractedPhone: '9876543210' });
     }, 1000);
   };
 
@@ -576,29 +510,12 @@ function OCRView({ t, theme }) {
     <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border, maxWidth: '650px', margin: 'auto' }}>
       <h2 style={styles.cardTitle}>{t.ocrTitle}</h2>
       <p style={styles.subText}>{t.ocrSub}</p>
-      
-      <div style={{ marginBottom: '20px' }}>
-        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} />
-      </div>
-
-      {imagePreview && (
-        <div style={{ marginBottom: '15px', textAlign: 'center' }}>
-          <img src={imagePreview} alt="Receipt Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', border: `1px solid ${theme.border}` }} />
-        </div>
-      )}
-
-      {scanning && (
-        <div style={{ margin: '15px 0', textAlign: 'center' }}>
-          <p style={{ fontWeight: 'bold' }}>{t.scanningText} {progress}%</p>
-          <div style={{ width: '100%', background: theme.inputBg, borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
-            <div style={{ width: `${progress}%`, background: '#6366f1', height: '100%', transition: 'width 0.2s' }}></div>
-          </div>
-        </div>
-      )}
-
+      <input type="file" accept="image/*" onChange={handleImageUpload} style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border, marginBottom: '15px' }} />
+      {imagePreview && <div style={{ textAlign: 'center', marginBottom: '15px' }}><img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px' }} /></div>}
+      {scanning && <p style={{ fontWeight: 'bold', textAlign: 'center' }}>{t.scanningText} {progress}%</p>}
       {extractedData && (
-        <div style={{ marginTop: '15px', background: theme.inputBg, padding: '15px', borderRadius: '6px', border: `1px solid ${theme.border}` }}>
-          <h3 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#10b981' }}>{t.extractedHeading}</h3>
+        <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '6px', border: `1px solid ${theme.border}` }}>
+          <h3 style={{ color: '#10b981', margin: '0 0 10px 0', fontSize: '15px' }}>{t.extractedHeading}</h3>
           <p><strong>{t.storeNameLabel}</strong> {extractedData.extractedStore}</p>
           <p><strong>{t.totalAmountLabel}</strong> ₹{extractedData.extractedAmount.toFixed(2)}</p>
           <p><strong>{t.phoneNumLabel}</strong> {extractedData.extractedPhone}</p>
@@ -610,24 +527,16 @@ function OCRView({ t, theme }) {
 
 function KhataView({ t, theme }) {
   const [khataList, setKhataList] = useState([]);
-
-  const markAsPaid = (id) => {
-    setKhataList(prev => prev.filter(k => k._id !== id));
-  };
+  const markAsPaid = (id) => setKhataList(prev => prev.filter(k => k._id !== id));
 
   return (
     <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border }}>
       <h2 style={styles.cardTitle}>{t.khataTitle}</h2>
       {khataList.length === 0 ? <p style={styles.subText}>{t.noKhata}</p> : (
         khataList.map(k => (
-          <div key={k._id} style={{ ...styles.tableRow, borderColor: theme.border, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <strong>{k.customerName}</strong> ({k.phoneNumber})
-              <div style={{ fontSize: '12px', color: '#ef4444' }}>{t.dueBalance} ₹{k.balance.toFixed(2)}</div>
-            </div>
-            <button type="button" onClick={() => markAsPaid(k._id)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-              {t.markPaid}
-            </button>
+          <div key={k._id} style={{ ...styles.tableRow, borderColor: theme.border, display: 'flex', justifyContent: 'space-align' }}>
+            <div><strong>{k.customerName}</strong> ({k.phoneNumber})</div>
+            <button type="button" onClick={() => markAsPaid(k._id)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>{t.markPaid}</button>
           </div>
         ))
       )}
@@ -635,43 +544,39 @@ function KhataView({ t, theme }) {
   );
 }
 
-function ReportsView({ lang, t, theme }) {
-  const [report, setReport] = useState({ totalRevenue: 0.00, netBalance: 0.00 });
-  const [transactions, setTransactions] = useState([]);
+function ReportsView({ t, theme, inventory }) {
+  const [report] = useState({ totalRevenue: 1700.00, netBalance: 1700.00 });
+  const [transactions, setTransactions] = useState([
+    { id: '1', store: 'Main Store', phoneNumber: '9876543210', date: new Date(), type: 'CREDIT', displayAmount: '+₹1,250.00' },
+    { id: '2', store: 'Main Store', phoneNumber: '9123456789', date: new Date(), type: 'CREDIT', displayAmount: '+₹450.00' }
+  ]);
 
-  const fetchData = () => {
-    // Clean mock transactions without dollar symbols
-    setTransactions([
-      { id: '1', store: 'Main Store', phoneNumber: '9876543210', date: new Date(), type: 'CREDIT', displayAmount: '+₹1,250.00' },
-      { id: '2', store: 'Main Store', phoneNumber: '9123456789', date: new Date(), type: 'CREDIT', displayAmount: '+₹450.00' }
-    ]);
-    setReport({ totalRevenue: 1700.00, netBalance: 1700.00 });
-  };
-
-  useEffect(() => { fetchData(); }, [lang]);
+  const totalInventoryCost = inventory.reduce((sum, item) => sum + (Number(item.price) * Number(item.stock)), 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border }}>
         <h2 style={styles.cardTitle}>{t.ledgerMetrics}</h2>
-        {report && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '15px' }}>
-            <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
-              <p style={styles.subText}>{t.totalRevenue}</p>
-              <h3 style={{ color: '#10b981', margin: '5px 0 0' }}>+₹{report.totalRevenue.toFixed(2)}</h3>
-            </div>
-            <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3b82f6' }}>
-              <p style={styles.subText}>{t.netBalance}</p>
-              <h3 style={{ color: '#3b82f6', margin: '5px 0 0' }}>₹{report.netBalance.toFixed(2)}</h3>
-            </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '15px' }}>
+          <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+            <p style={styles.subText}>{t.totalRevenue}</p>
+            <h3 style={{ color: '#10b981', margin: '5px 0 0' }}>+₹{report.totalRevenue.toFixed(2)}</h3>
           </div>
-        )}
+          <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3b82f6' }}>
+            <p style={styles.subText}>{t.netBalance}</p>
+            <h3 style={{ color: '#3b82f6', margin: '5px 0 0' }}>₹{report.netBalance.toFixed(2)}</h3>
+          </div>
+          <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+            <p style={styles.subText}>{t.totalInventoryCost}</p>
+            <h3 style={{ color: '#f59e0b', margin: '5px 0 0' }}>₹{totalInventoryCost.toFixed(2)}</h3>
+          </div>
+        </div>
       </div>
 
       <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={styles.cardTitle}>{t.recentLedger}</h2>
-          <button onClick={fetchData} style={styles.submitBtn}>{t.refreshLedger}</button>
+          <button onClick={() => {}} style={styles.submitBtn}>{t.refreshLedger}</button>
         </div>
         {transactions.length === 0 ? <p style={styles.subText}>{t.noTransactions}</p> : (
           transactions.map(tx => (
@@ -680,9 +585,7 @@ function ReportsView({ lang, t, theme }) {
                 <strong>{tx.store}</strong>
                 <div style={{ fontSize: '12px', opacity: 0.7 }}>Phone: {tx.phoneNumber} • {new Date(tx.date).toLocaleDateString()}</div>
               </div>
-              <div style={{ fontWeight: 'bold', fontSize: '16px', color: tx.type === 'CREDIT' ? '#10b981' : '#ef4444' }}>
-                {tx.displayAmount}
-              </div>
+              <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#10b981' }}>{tx.displayAmount}</div>
             </div>
           ))
         )}
@@ -705,7 +608,7 @@ function ProfileView({ t, theme }) {
       setMsg({ text: 'Phone number must be exactly 10 digits.', type: 'error' });
       return;
     }
-    if (!address || !address.trim() || !gstin || !gstin.trim()) {
+    if (!address.trim() || !gstin.trim()) {
       setMsg({ text: t.addressGstinRequired, type: 'error' });
       return;
     }
@@ -716,33 +619,11 @@ function ProfileView({ t, theme }) {
     <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border, maxWidth: '600px', margin: 'auto' }}>
       <h2 style={styles.cardTitle}>{t.profileTitle}</h2>
       <form onSubmit={saveProfile} style={styles.form}>
-        <div>
-          <label style={styles.label}>{t.shopNameLabel}</label>
-          <input type="text" value={shopName} onChange={e => setShopName(e.target.value)} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} />
-        </div>
-        <div>
-          <label style={styles.label}>{t.ownerNameLabel}</label>
-          <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} />
-        </div>
-        <div>
-          <label style={styles.label}>{t.phoneNumLabelProfile}</label>
-          <input 
-            type="tel" 
-            maxLength="10" 
-            value={phone} 
-            onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-            required 
-            style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} 
-          />
-        </div>
-        <div>
-          <label style={styles.label}>{t.addressLabel}</label>
-          <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder={t.addressPlaceholder} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} />
-        </div>
-        <div>
-          <label style={styles.label}>{t.gstinLabel}</label>
-          <input type="text" value={gstin} onChange={e => setGstin(e.target.value)} placeholder={t.gstinPlaceholder} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} />
-        </div>
+        <div><label style={styles.label}>{t.shopNameLabel}</label><input type="text" value={shopName} onChange={e => setShopName(e.target.value)} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} /></div>
+        <div><label style={styles.label}>{t.ownerNameLabel}</label><input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} /></div>
+        <div><label style={styles.label}>{t.phoneNumLabelProfile}</label><input type="tel" maxLength="10" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} /></div>
+        <div><label style={styles.label}>{t.addressLabel}</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} /></div>
+        <div><label style={styles.label}>{t.gstinLabel}</label><input type="text" value={gstin} onChange={e => setGstin(e.target.value)} required style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} /></div>
         <button type="submit" style={styles.submitBtn}>{t.saveProfile}</button>
         {msg.text && <p style={{ color: msg.type === 'success' ? '#10b981' : '#ef4444', margin: '5px 0 0' }}>{msg.text}</p>}
       </form>
