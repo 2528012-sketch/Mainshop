@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Anek Devanagari', sans-serif;
+}
+
+@layer base {
+  :root {
+    --bg-color: #e2e9f2;
+    --text-color: #050543;
+    --primary: #5649de;
+    --secondary: #ab7bed;
+    --border-color: #050543;
+    --card-bg: #ffffff;
+    --shadow-color: #050543;
+    --dot-color: rgba(5, 5, 67, 0.12);
+  }
+  
+  html.dark {
+    --bg-color: #060218;
+    --text-color: #e2e9f2;
+    --primary: #ab7bed;
+    --secondary: #5649de;
+    --border-color: #e2e9f2;
+    --card-bg: #100b2e;
+    --shadow-color: #e2e9f2;
+    --dot-color: rgba(226, 233, 242, 0.12);
+  }
+  
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+  }
+}
+
+@layer utilities {
+  .bg-dot-grid {
+    background-color: var(--bg-color);
+    background-image: radial-gradient(var(--dot-color) 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+  }
+  .brutal-border {
+    border: 2px solid var(--border-color);
+  }
+  .brutal-shadow {
+    box-shadow: 4px 4px 0px 0px var(--shadow-color);
+  }
+  .brutal-shadow-hover:hover {
+    box-shadow: 6px 6px 0px 0px var(--shadow-color);
+    transform: translate(-2px, -2px);
+  }
+  .brutal-shadow-active:active {
+    box-shadow: 0px 0px 0px 0px var(--shadow-color);
+    transform: translate(4px, 4px);
+  }
+}
