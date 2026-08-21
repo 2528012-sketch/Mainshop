@@ -3,8 +3,8 @@ import React, { useState, useEffect } from "react";
 const API_BASE = "http://localhost:5000/api";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("analytics"); // Set Financial Analytics as the default first window
-  const [darkMode, setDarkMode] = useState(true); // Default to Dark Mode
+  const [activeTab, setActiveTab] = useState("analytics");
+  const [darkMode, setDarkMode] = useState(true);
 
   // Core Data States
   const [store, setStore] = useState({});
@@ -21,10 +21,13 @@ export default function App() {
   const [gstin, setGstin] = useState("");
   const [upiId, setUpiId] = useState("");
 
-  // POS Cart State
+  // Billing Cart & Search States
   const [cart, setCart] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedItemForBill, setSelectedItemForBill] = useState(null);
+  const [billQty, setBillQty] = useState(1);
 
   // New Inventory Item States
   const [newItemName, setNewItemName] = useState("");
@@ -32,7 +35,7 @@ export default function App() {
   const [newItemStock, setNewItemStock] = useState("");
   const [newItemThreshold, setNewItemThreshold] = useState("5");
 
-  // Khata Input States
+  // Khata / Credit Input States
   const [khataName, setKhataName] = useState("");
   const [khataPhone, setKhataPhone] = useState("");
   const [khataAmount, setKhataAmount] = useState("");
@@ -40,7 +43,7 @@ export default function App() {
   // OCR Invoice Scanner States
   const [ocrText, setOcrText] = useState("");
   const [ocrScanning, setOcrScanning] = useState(false);
-  const [scannedItems, setScannedItems] = useState("");
+  const [scannedItems, setScannedItems] = useState([]);
 
   useEffect(() => {
     fetchDashboard();
@@ -89,23 +92,28 @@ export default function App() {
     }
   };
 
-  const addToCart = (product) => {
-    if (product.stock <= 0) return alert("Product is out of stock!");
+  const addToCartCustom = (product, quantity) => {
+    const qty = Number(quantity);
+    if (product.stock < qty) {
+      alert(`Not enough stock available! Current stock: ${product.stock}`);
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(item => item.inventoryId === product.id);
       if (existing) {
         return prev.map(item => 
-          item.inventoryId === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.inventoryId === product.id ? { ...item, quantity: item.quantity + qty } : item
         );
       }
-      return [...prev, { inventoryId: product.id, name: product.name, unitPrice: Number(product.price), quantity: 1 }];
+      return [...prev, { inventoryId: product.id, name: product.name, unitPrice: Number(product.price), quantity: qty }];
     });
   };
 
+  // Detailed GST calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-  const cgst = subtotal * 0.025; // 2.5% CGST
-  const sgst = subtotal * 0.025; // 2.5% SGST
-  const totalGst = cgst + sgst;  // Total 5% GST breakdown
+  const cgst = subtotal * 0.025; 
+  const sgst = subtotal * 0.025; 
+  const totalGst = cgst + sgst;  
   const grandTotal = subtotal + totalGst;
 
   const handleCheckout = async () => {
@@ -145,18 +153,21 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newItemName,
-          price: newItemPrice,
-          stock: newItemStock,
-          threshold: newItemThreshold
+          price: Number(newItemPrice),
+          stock: Number(newItemStock),
+          threshold: Number(newItemThreshold)
         })
       });
       if (res.ok) {
         alert("Product added successfully!");
         setNewItemName(""); setNewItemPrice(""); setNewItemStock(""); setNewItemThreshold("5");
         fetchDashboard();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to add item: ${errorData.error}`);
       }
     } catch (err) {
-      alert("Error adding item.");
+      alert("Error adding item to inventory.");
     }
   };
 
@@ -166,7 +177,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/khata`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer: khataName, phone: khataPhone, balanceDue: khataAmount })
+        body: JSON.stringify({ customer: khataName, phone: khataPhone, balanceDue: Number(khataAmount) })
       });
       if (res.ok) {
         alert("Khata entry saved successfully!");
@@ -209,7 +220,6 @@ export default function App() {
     }
   };
 
-  // Financial calculations
   const totalKhataDue = khataList.reduce((acc, k) => acc + Number(k.balanceDue || 0), 0);
   const totalInventoryValue = inventory.reduce((acc, i) => acc + (Number(i.price) * Number(i.stock || 0)), 0);
   const totalSalesRevenue = transactions.reduce((acc, t) => acc + Number(t.total || 0), 0);
@@ -219,7 +229,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "sans-serif", background: theme.bg, color: theme.text, minHeight: "100vh", padding: "20px" }}>
       
-      {/* Header with Reordered and Renamed Navigation Tabs */}
+      {/* Header Navigation Bar */}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: theme.card, padding: "15px 25px", borderRadius: "10px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "20px" }}>
         <div>
           <h1 style={{ margin: 0, fontSize: "20px" }}>{store.shopName || "The Shopkeeper's Day"}</h1>
@@ -238,7 +248,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* TAB 1: ISOLATED FINANCIAL ANALYTICS WINDOW */}
+      {/* WINDOW 1: FINANCIAL ANALYTICS */}
       {activeTab === "analytics" && (
         <div style={{ background: theme.card, padding: "30px", borderRadius: "10px", maxWidth: "900px", margin: "0 auto" }}>
           <h2>Detailed Financial Breakdown</h2>
@@ -283,32 +293,113 @@ export default function App() {
         </div>
       )}
 
-      {/* TAB 2: BILLING DESK (With Explained GST) */}
+      {/* WINDOW 2: BILLING (Keyword Search & Manual Quantity Input) */}
       {activeTab === "billing" && (
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px" }}>
           <div style={{ background: theme.card, padding: "20px", borderRadius: "10px" }}>
-            <h3>Inventory Catalog (Click to add to cart)</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px", marginTop: "15px" }}>
-              {inventory.map(item => {
-                const isLowStock = item.stock <= item.threshold;
-                return (
-                  <div key={item.id} onClick={() => addToCart(item)} style={{ border: `1px solid ${isLowStock ? "#ef4444" : theme.border}`, padding: "12px", borderRadius: "8px", cursor: "pointer", background: item.stock > 0 ? theme.card : "#334155", position: "relative" }}>
-                    {isLowStock && <span style={{ position: "absolute", top: "5px", right: "5px", background: "#ef4444", color: "#fff", fontSize: "10px", padding: "2px 5px", borderRadius: "4px" }}>Low Stock</span>}
-                    <h4 style={{ margin: "0 0 6px 0" }}>{item.name}</h4>
-                    <p style={{ margin: 0, color: "#10b981", fontWeight: "bold" }}>₹{Number(item.price).toFixed(2)}</p>
-                    <small style={{ opacity: 0.7 }}>Stock: {item.stock} (Alert: {item.threshold})</small>
-                  </div>
-                );
-              })}
+            <h3>Create Bill - Search Item & Quantity</h3>
+            
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "10px", marginTop: "15px", alignItems: "end", position: "relative" }}>
+              
+              {/* Keyword Search Input */}
+              <div style={{ position: "relative" }}>
+                <label style={labelStyle}>Search Item Name</label>
+                <input 
+                  type="text" 
+                  placeholder="Type keyword..." 
+                  value={searchQuery}
+                  onChange={e => {
+                    setSearchQuery(e.target.value);
+                    setSelectedItemForBill(null);
+                  }}
+                  style={inputStyle(theme)} 
+                />
+
+                {/* Autocomplete Dropdown suggestions */}
+                {searchQuery.trim() !== "" && !selectedItemForBill && (
+                  <ul style={{ position: "absolute", zIndex: 10, width: "100%", background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "4px", maxHeight: "150px", overflowY: "auto", margin: 0, padding: 0, listStyle: "none", boxShadow: "0 4px 6px rgba(0,0,0,0.2)" }}>
+                    {inventory
+                      .filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map(item => (
+                        <li 
+                          key={item.id} 
+                          onClick={() => {
+                            setSelectedItemForBill(item);
+                            setSearchQuery(item.name);
+                          }}
+                          style={{ padding: "8px 12px", cursor: "pointer", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between" }}
+                        >
+                          <span>{item.name}</span>
+                          <span style={{ opacity: 0.7, fontSize: "12px" }}>₹{item.price} (Stock: {item.stock})</span>
+                        </li>
+                      ))}
+                    {inventory.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                      <li style={{ padding: "8px 12px", opacity: 0.5, fontSize: "13px" }}>No matching items</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+
+              {/* Manual Quantity Input */}
+              <div>
+                <label style={labelStyle}>Quantity</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={billQty} 
+                  onChange={e => setBillQty(Math.max(1, parseInt(e.target.value) || 1))} 
+                  style={inputStyle(theme)} 
+                />
+              </div>
+
+              {/* Add to Bill Button */}
+              <div>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    if (!selectedItemForBill) {
+                      alert("Please select a valid item from the search suggestion dropdown.");
+                      return;
+                    }
+                    addToCartCustom(selectedItemForBill, billQty);
+                    setSearchQuery("");
+                    setSelectedItemForBill(null);
+                    setBillQty(1);
+                  }}
+                  style={{ width: "100%", padding: "8px", background: "#4f46e5", color: "#fff", border: "none", borderRadius: "4px", fontWeight: "bold", cursor: "pointer", marginBottom: "12px" }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            <h4 style={{ marginTop: "25px" }}>Available Inventory Stock Reference</h4>
+            <div style={{ maxHeight: "200px", overflowY: "auto", border: `1px solid ${theme.border}`, borderRadius: "6px", padding: "10px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: `1px solid ${theme.border}` }}>
+                    <th style={thStyle}>Name</th><th style={thStyle}>Price</th><th style={thStyle}>Available Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inventory.map(item => (
+                    <tr key={item.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                      <td style={tdStyle}>{item.name}</td>
+                      <td style={tdStyle}>₹{Number(item.price).toFixed(2)}</td>
+                      <td style={tdStyle}>{item.stock}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
           <div style={{ background: theme.card, padding: "20px", borderRadius: "10px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div>
-              <h3>Active Cart</h3>
+              <h3>Active Cart Summary</h3>
               <input type="text" placeholder="Customer Name" value={customerName} onChange={e => setCustomerName(e.target.value)} style={inputStyle(theme)} />
               <div style={{ maxHeight: "180px", overflowY: "auto", marginBottom: "15px" }}>
-                {cart.length === 0 ? <p style={{ opacity: 0.5, fontSize: "13px" }}>Cart is empty. Click items from catalog.</p> : cart.map((c, i) => (
+                {cart.length === 0 ? <p style={{ opacity: 0.5, fontSize: "13px" }}>Cart is empty. Search and add items above.</p> : cart.map((c, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "14px" }}>
                     <span>{c.name} (x{c.quantity})</span>
                     <span>₹{(c.unitPrice * c.quantity).toFixed(2)}</span>
@@ -319,8 +410,8 @@ export default function App() {
             <div>
               <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: "10px", marginBottom: "15px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}><span>Subtotal:</span><span>₹{subtotal.toFixed(2)}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", opacity: 0.8, marginTop: "4px" }}><span>CGST (2.5%):</span><span>₹{cgst.toFixed(2)}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", opacity: 0.8 }}><span>SGST (2.5%):</span><span>₹{sgst.toFixed(2)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", opacity: 0.8, marginTop: "4px" }}><span>CGST (Central Tax 2.5%):</span><span>₹{cgst.toFixed(2)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", opacity: 0.8 }}><span>SGST (State Tax 2.5%):</span><span>₹{sgst.toFixed(2)}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "600", marginTop: "2px", marginBottom: "6px" }}><span>Total Tax (5% GST):</span><span>₹{totalGst.toFixed(2)}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "16px", marginTop: "8px", borderTop: `1px dashed ${theme.border}`, paddingTop: "6px" }}><span>Grand Total:</span><span>₹{grandTotal.toFixed(2)}</span></div>
               </div>
@@ -335,7 +426,7 @@ export default function App() {
         </div>
       )}
 
-      {/* TAB 3: INVENTORY MANAGEMENT */}
+      {/* WINDOW 3: INVENTORY MANAGEMENT */}
       {activeTab === "inventory" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px" }}>
           <form onSubmit={handleAddInventory} style={{ background: theme.card, padding: "20px", borderRadius: "10px", height: "fit-content" }}>
@@ -379,7 +470,7 @@ export default function App() {
         </div>
       )}
 
-      {/* TAB 4: OCR INVOICE SCANNER */}
+      {/* WINDOW 4: OCR INVOICE SCANNER */}
       {activeTab === "ocr" && (
         <div style={{ background: theme.card, padding: "30px", borderRadius: "10px", maxWidth: "800px", margin: "0 auto" }}>
           <h2>OCR Supplier Invoice Scanner</h2>
@@ -424,7 +515,7 @@ export default function App() {
         </div>
       )}
 
-      {/* TAB 5: KHATA / CREDIT LEDGER */}
+      {/* WINDOW 5: KHATA / CREDIT LEDGER */}
       {activeTab === "khata" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px" }}>
           <form onSubmit={handleAddKhata} style={{ background: theme.card, padding: "20px", borderRadius: "10px", height: "fit-content" }}>
@@ -460,10 +551,10 @@ export default function App() {
         </div>
       )}
 
-      {/* TAB 6: OWNER PROFILE */}
+      {/* WINDOW 6: OWNER PROFILE */}
       {activeTab === "profile" && (
         <div style={{ background: theme.card, padding: "30px", borderRadius: "10px", maxWidth: "700px", margin: "0 auto" }}>
-          <h2>Store Owner Profile</h2>
+          <h2>Owner Profile</h2>
           <p style={{ opacity: 0.7, marginBottom: "20px" }}>Configure your business credentials, billing header, and contact data.</p>
           <form onSubmit={handleUpdateProfile}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
