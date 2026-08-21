@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const translations = {
   en: {
@@ -7,7 +7,7 @@ const translations = {
     reports: "Financial Reports & Ledger",
     billing: "Billing (POS)",
     inventory: "Inventory (Stock)",
-    ocr: "OCR Scanner",
+    expenses: "Expense Tracker",
     khata: "Khata / Credit",
     profile: "Shop Profile",
     light: "☀️ Light",
@@ -28,9 +28,10 @@ const translations = {
     tableStockInput: "Total Stock Input",
     updateBtn: "Update",
     noStock: "No stock available.",
+    lowStockWarning: "⚠️ Low Stock (< 5)",
     // Billing
-    searchLabel: "Type to search inventory items",
-    searchPlaceholder: "Search product name...",
+    searchLabel: "Live Autocomplete Search",
+    searchPlaceholder: "Type to search product name...",
     noMatch: "No matching products found",
     addBtn: "+ Add",
     activeCart: "Active Cart Items",
@@ -49,21 +50,36 @@ const translations = {
     customerPhone: "Customer Phone Number * (10 Digits)",
     phonePlaceholder: "9876543210",
     checkoutMode: "Checkout Mode",
-    cashMode: "Cash / UPI (Immediate Revenue)",
+    cashMode: "Cash Payment",
+    upiMode: "UPI / Digital QR Payment",
     khataMode: "Khata / Credit (Udhar)",
     completeCheckout: "Complete Checkout",
-    checkoutSuccessKhata: "Checked out to Khata successfully!",
-    checkoutSuccessCash: "Bill processed with GST & stock deducted!",
+    checkoutSuccessKhata: "Checked out to Khata & Ledger successfully!",
+    checkoutSuccessCash: "Bill processed, stock deducted, & added to ledger!",
     phoneError: "Phone number must be exactly 10 digits.",
     cartError: "Please add items to the bill cart.",
-    // OCR
-    ocrTitle: "Live Optical Character Recognition (OCR) Scanner",
-    ocrSub: "Upload a receipt image to automatically extract text and values.",
-    scanningText: "Scanning Receipt Text...",
-    extractedHeading: "Successfully Extracted Data:",
-    storeNameLabel: "Store Name:",
-    totalAmountLabel: "Total Amount:",
-    phoneNumLabel: "Phone Number:",
+    digitalPaymentBox: "📱 Scan & Pay via UPI",
+    scanInstruction: "Scan this QR code using GPay, PhonePe, or Paytm to pay:",
+    // Expenses
+    expenseTitle: "Expense Tracker & Management",
+    descLabel: "Expense Description *",
+    descPlaceholder: "e.g. Electricity bill, Tea, Packaging",
+    amountLabel: "Amount (₹) *",
+    amountPlaceholder: "500",
+    categoryLabel: "Category",
+    catUtilities: "Utilities & Bills",
+    catSupply: "Store Supplies",
+    catMisc: "Miscellaneous",
+    addExpenseBtn: "Add Expense",
+    updateExpenseBtn: "Update Expense",
+    cancelEditBtn: "Cancel",
+    expenseSuccess: "Expense recorded successfully!",
+    expenseUpdateSuccess: "Expense updated successfully!",
+    totalExpenses: "Total Expenses",
+    recentExpenses: "Recent Expenses Log",
+    noExpenses: "No expenses recorded yet.",
+    editBtn: "Edit",
+    deleteBtn: "Delete",
     // Khata
     khataTitle: "Khata / Credit Ledger Book",
     noKhata: "No active credit balances.",
@@ -72,10 +88,9 @@ const translations = {
     // Reports
     ledgerMetrics: "Financial Ledger Metrics",
     totalRevenue: "Total Revenue (Credits)",
-    netBalance: "Net Balance",
+    netBalance: "Net Balance (Revenue - Expenses)",
     totalInventoryCost: "Total Inventory Cost",
     recentLedger: "Recent Transaction Ledger",
-    refreshLedger: "Refresh Ledger",
     noTransactions: "No transactions recorded yet.",
     // Profile
     profileTitle: "Shop Profile & Settings",
@@ -96,7 +111,7 @@ const translations = {
     reports: "वित्तीय रिपोर्ट और बहीखाता",
     billing: "बिलिंग (POS)",
     inventory: "इन्वेंट्री (स्टॉक)",
-    ocr: "OCR स्कैनर",
+    expenses: "खर्च ट्रैकर",
     khata: "खाता / उधार",
     profile: "दुकान प्रोफ़ाइल",
     light: "☀️ लाइट",
@@ -117,42 +132,58 @@ const translations = {
     tableStockInput: "कुल स्टॉक इनपुट",
     updateBtn: "अपडेट करें",
     noStock: "कोई स्टॉक उपलब्ध नहीं है।",
+    lowStockWarning: "⚠️ कम स्टॉक (< 5)",
     // Billing
-    searchLabel: "इन्वेंट्री आइटम खोजने के लिए टाइप करें",
+    searchLabel: "लाइव ऑटो कम्प्लीट खोज",
     searchPlaceholder: "उत्पाद का नाम खोजें...",
     noMatch: "कोई मेल खाता उत्पाद नहीं मिला",
     addBtn: "+ जोड़ें",
     activeCart: "सक्रिय कार्ट आइटम",
     noCart: "अभी तक कोई आइटम नहीं जोड़ा गया है।",
     billSummary: "बिल सारांश और जीएसटी",
-    subtotal: "उप-योग (Subtotal):",
+    subtotal: "उप-योग:",
     gstRate: "जीएसटी दर:",
     gst0: "0% जीएसटी",
-    gst5: "5% जीएसटी (CGST 2.5% + SGST 2.5%)",
-    gst12: "12% जीएसटी (CGST 6% + SGST 6%)",
-    gst18: "18% जीएसटी (CGST 9% + SGST 9%)",
+    gst5: "5% जीएसटी",
+    gst12: "12% जीएसटी",
+    gst18: "18% जीएसटी",
     totalTax: "कुल कर (जीएसटी राशि):",
-    grandTotal: "कुल योग (Grand Total):",
+    grandTotal: "कुल योग:",
     customerName: "ग्राहक का नाम",
     customerNamePlaceholder: "राहुल कुमार",
     customerPhone: "ग्राहक का फोन नंबर * (10 अंक)",
     phonePlaceholder: "9876543210",
     checkoutMode: "चेकआउट मोड",
-    cashMode: "नकद / यूपीआई (तत्काल आय)",
+    cashMode: "नकद भुगतान",
+    upiMode: "UPI / डिजिटल QR भुगतान",
     khataMode: "खाता / उधार",
     completeCheckout: "चेकआउट पूरा करें",
     checkoutSuccessKhata: "खाता में सफलतापूर्वक चेकआउट हो गया!",
-    checkoutSuccessCash: "जीएसटी और स्टॉक कटौती के साथ बिल प्रोसेस हो गया!",
+    checkoutSuccessCash: "बिल प्रोसेस हो गया और बहीखाता में जुड़ गया!",
     phoneError: "फोन नंबर ठीक 10 अंकों का होना चाहिए।",
     cartError: "कृपया बिल कार्ट में आइटम जोड़ें।",
-    // OCR
-    ocrTitle: "लाइव ऑप्टिकल कैरेक्टर रिकग्निशन (OCR) स्कैनर",
-    ocrSub: "टेक्स्ट और वैल्यू स्वचालित रूप से निकालने के लिए रसीद की छवि अपलोड करें।",
-    scanningText: "रसीद का पाठ स्कैन किया जा रहा है...",
-    extractedHeading: "सफलतापूर्वक निकाला गया डेटा:",
-    storeNameLabel: "स्टोर का नाम:",
-    totalAmountLabel: "कुल राशि:",
-    phoneNumLabel: "फोन नंबर:",
+    digitalPaymentBox: "📱 UPI से स्कैन और भुगतान करें",
+    scanInstruction: "भुगतान करने के लिए GPay, PhonePe या Paytm से इस QR को स्कैन करें:",
+    // Expenses
+    expenseTitle: "खर्च ट्रैकर और प्रबंधन",
+    descLabel: "खर्च का विवरण *",
+    descPlaceholder: "उदा. बिजली बिल, चाय, पैकेजिंग",
+    amountLabel: "राशि (₹) *",
+    amountPlaceholder: "500",
+    categoryLabel: "श्रेणी",
+    catUtilities: "उपयोगिताएँ और बिल",
+    catSupply: "दुकान की आपूर्ति",
+    catMisc: "विविध",
+    addExpenseBtn: "खर्च जोड़ें",
+    updateExpenseBtn: "खर्च अपडेट करें",
+    cancelEditBtn: "रद्द करें",
+    expenseSuccess: "खर्च सफलतापूर्वक दर्ज हो गया!",
+    expenseUpdateSuccess: "खर्च सफलतापूर्वक अपडेट हो गया!",
+    totalExpenses: "कुल खर्च",
+    recentExpenses: "हालिया खर्च लॉग",
+    noExpenses: "अभी तक कोई खर्च दर्ज नहीं किया गया है।",
+    editBtn: "संपादित करें",
+    deleteBtn: "हटाएं",
     // Khata
     khataTitle: "खाता / क्रेडिट बहीखाता",
     noKhata: "कोई सक्रिय क्रेडिट बकाया नहीं है।",
@@ -161,10 +192,9 @@ const translations = {
     // Reports
     ledgerMetrics: "वित्तीय बहीखाता मेट्रिक्स",
     totalRevenue: "कुल राजस्व (क्रेडिट)",
-    netBalance: "शुद्ध शेष (Net Balance)",
+    netBalance: "शुद्ध शेष (राजस्व - खर्च)",
     totalInventoryCost: "कुल इन्वेंट्री लागत",
     recentLedger: "हालिया लेनदेन बहीखाता",
-    refreshLedger: "बहीखाता रीफ्रेश करें",
     noTransactions: "अभी तक कोई लेनदेन दर्ज नहीं किया गया है।",
     // Profile
     profileTitle: "दुकान प्रोफ़ाइल और सेटिंग्स",
@@ -182,14 +212,26 @@ const translations = {
 };
 
 export default function App() {
-  // Set default initial tab to 'reports' instead of 'inventory'
   const [activeTab, setActiveTab] = useState('reports');
   const [lang, setLang] = useState('en');
   const [theme, setTheme] = useState('dark');
-  const [inventory, setInventory] = useState([]);
+  
+  const [inventory, setInventory] = useState([
+    { id: 'ID-1001', name: 'Aashirvaad Atta 5kg', price: 240, stock: 3 },
+    { id: 'ID-1002', name: 'Fortune Sun Oil 1L', price: 135, stock: 25 },
+    { id: 'ID-1003', name: 'Tata Salt 1kg', price: 28, stock: 4 }
+  ]);
+
+  const [transactions, setTransactions] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [report, setReport] = useState({ totalRevenue: 0.00 });
+  const [khataList, setKhataList] = useState([]);
 
   const currentTheme = themes[theme];
   const t = translations[lang];
+
+  const totalExpensesSum = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const netBalanceVal = report.totalRevenue - totalExpensesSum;
 
   return (
     <div style={{ ...styles.appContainer, background: currentTheme.bg, color: currentTheme.text }}>
@@ -208,7 +250,7 @@ export default function App() {
           <button onClick={() => setActiveTab('reports')} style={styles.navLink(activeTab === 'reports', currentTheme)}>{t.reports}</button>
           <button onClick={() => setActiveTab('billing')} style={styles.navLink(activeTab === 'billing', currentTheme)}>{t.billing}</button>
           <button onClick={() => setActiveTab('inventory')} style={styles.navLink(activeTab === 'inventory', currentTheme)}>{t.inventory}</button>
-          <button onClick={() => setActiveTab('ocr')} style={styles.navLink(activeTab === 'ocr', currentTheme)}>{t.ocr}</button>
+          <button onClick={() => setActiveTab('expenses')} style={styles.navLink(activeTab === 'expenses', currentTheme)}>{t.expenses}</button>
           <button onClick={() => setActiveTab('khata')} style={styles.navLink(activeTab === 'khata', currentTheme)}>{t.khata}</button>
           <button onClick={() => setActiveTab('profile')} style={styles.navLink(activeTab === 'profile', currentTheme)}>{t.profile}</button>
           
@@ -219,11 +261,21 @@ export default function App() {
       </header>
 
       <main style={styles.mainContent}>
-        {activeTab === 'reports' && <ReportsView lang={lang} t={t} theme={currentTheme} inventory={inventory} />}
-        {activeTab === 'inventory' && <InventoryView lang={lang} t={t} theme={currentTheme} inventory={inventory} setInventory={setInventory} />}
-        {activeTab === 'billing' && <BillingView lang={lang} t={t} theme={currentTheme} inventory={inventory} />}
-        {activeTab === 'ocr' && <OCRView t={t} theme={currentTheme} />}
-        {activeTab === 'khata' && <KhataView t={t} theme={currentTheme} />}
+        {activeTab === 'reports' && <ReportsView t={t} theme={currentTheme} inventory={inventory} transactions={transactions} report={report} totalExpenses={totalExpensesSum} netBalance={netBalanceVal} />}
+        {activeTab === 'inventory' && <InventoryView t={t} theme={currentTheme} inventory={inventory} setInventory={setInventory} />}
+        {activeTab === 'billing' && (
+          <BillingView 
+            t={t} 
+            theme={currentTheme} 
+            inventory={inventory} 
+            setInventory={setInventory}
+            setTransactions={setTransactions}
+            setReport={setReport}
+            setKhataList={setKhataList}
+          />
+        )}
+        {activeTab === 'expenses' && <ExpensesView t={t} theme={currentTheme} expenses={expenses} setExpenses={setExpenses} />}
+        {activeTab === 'khata' && <KhataView t={t} theme={currentTheme} khataList={khataList} setKhataList={setKhataList} />}
         {activeTab === 'profile' && <ProfileView t={t} theme={currentTheme} />}
       </main>
     </div>
@@ -232,7 +284,7 @@ export default function App() {
 
 /* ================= COMPONENT VIEWS ================= */
 
-function InventoryView({ lang, t, theme, inventory, setInventory }) {
+function InventoryView({ t, theme, inventory, setInventory }) {
   const [productName, setProductName] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
@@ -287,23 +339,29 @@ function InventoryView({ lang, t, theme, inventory, setInventory }) {
           <span style={{ flex: 1.5 }}>{t.tableStockInput}</span>
         </div>
         {inventory.length === 0 ? <p style={styles.subText}>{t.noStock}</p> : (
-          inventory.map(item => (
-            <div key={item.id} style={{ ...styles.tableRow, borderColor: theme.border, alignItems: 'center' }}>
-              <span style={{ flex: 2, fontWeight: '500' }}>{item.name}</span>
-              <span style={{ flex: 1 }}>₹{Number(item.price).toFixed(2)}</span>
-              <div style={{ flex: 1.5, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input type="number" min="0" defaultValue={item.stock} id={`stock-input-${item.id}`} style={{ width: '60px', padding: '6px', textAlign: 'center', background: theme.inputBg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: '4px' }} />
-                <button type="button" onClick={() => { const val = document.getElementById(`stock-input-${item.id}`).value; handleStockUpdate(item.id, val); }} style={{ ...styles.submitBtn, padding: '6px 10px', fontSize: '12px' }}>{t.updateBtn}</button>
+          inventory.map(item => {
+            const isLowStock = item.stock < 5;
+            return (
+              <div key={item.id} style={{ ...styles.tableRow, borderColor: theme.border, alignItems: 'center' }}>
+                <div style={{ flex: 2 }}>
+                  <span style={{ fontWeight: '500', display: 'block' }}>{item.name}</span>
+                  {isLowStock && <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold' }}>{t.lowStockWarning}</span>}
+                </div>
+                <span style={{ flex: 1 }}>₹{Number(item.price).toFixed(2)}</span>
+                <div style={{ flex: 1.5, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input type="number" min="0" defaultValue={item.stock} id={`stock-input-${item.id}`} style={{ width: '60px', padding: '6px', textAlign: 'center', background: theme.inputBg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: '4px' }} />
+                  <button type="button" onClick={() => { const val = document.getElementById(`stock-input-${item.id}`).value; handleStockUpdate(item.id, val); }} style={{ ...styles.submitBtn, padding: '6px 10px', fontSize: '12px' }}>{t.updateBtn}</button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
   );
 }
 
-function BillingView({ lang, t, theme, inventory }) {
+function BillingView({ t, theme, inventory, setInventory, setTransactions, setReport, setKhataList }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState([]);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -376,8 +434,46 @@ function BillingView({ lang, t, theme, inventory }) {
       return;
     }
 
-    setMsg({ text: paymentMethod === 'KHATA' ? t.checkoutSuccessKhata : t.checkoutSuccessCash, type: 'success' });
-    setPhoneNumber(''); setCustomerName(''); setCart([]);
+    setInventory(prevInv => {
+      return prevInv.map(prod => {
+        const cartItemMatch = cart.find(c => c.id === prod.id);
+        if (cartItemMatch) {
+          return { ...prod, stock: Math.max(0, prod.stock - cartItemMatch.quantity) };
+        }
+        return prod;
+      });
+    });
+
+    const newTx = {
+      id: 'TX-' + Math.floor(1000 + Math.random() * 9000),
+      store: customerName ? `${customerName}'s Order` : 'Walk-in Customer',
+      phoneNumber: phoneNumber,
+      date: new Date(),
+      type: paymentMethod,
+      displayAmount: `+₹${grandTotal.toFixed(2)}`,
+      numericAmount: grandTotal
+    };
+
+    setTransactions(prev => [newTx, ...prev]);
+
+    if (paymentMethod === 'CASH' || paymentMethod === 'UPI') {
+      setReport(prev => ({
+        totalRevenue: prev.totalRevenue + grandTotal
+      }));
+      setMsg({ text: t.checkoutSuccessCash, type: 'success' });
+    } else {
+      setKhataList(prev => [...prev, {
+        _id: 'KH-' + Math.floor(1000 + Math.random() * 9000),
+        customerName: customerName || 'Valued Customer',
+        phoneNumber: phoneNumber,
+        amount: grandTotal
+      }]);
+      setMsg({ text: t.checkoutSuccessKhata, type: 'success' });
+    }
+
+    setPhoneNumber(''); 
+    setCustomerName(''); 
+    setCart([]);
   };
 
   return (
@@ -458,6 +554,25 @@ function BillingView({ lang, t, theme, inventory }) {
           </div>
         </div>
 
+        {paymentMethod === 'UPI' && (
+          <div style={{ background: theme.inputBg, border: '2px dashed #6366f1', padding: '15px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center' }}>
+            <h4 style={{ margin: '0 0 5px 0', color: '#6366f1' }}>{t.digitalPaymentBox}</h4>
+            <p style={{ fontSize: '12px', margin: '0 0 10px 0', opacity: 0.8 }}>{t.scanInstruction}</p>
+            
+            <div style={{ background: '#fff', padding: '10px', display: 'inline-block', borderRadius: '6px' }}>
+              <img 
+                src="/qr.jpeg" 
+                alt="Shop UPI QR Code" 
+                style={{ display: 'block', width: '130px', height: '130px', objectFit: 'contain' }}
+              />
+            </div>
+            
+            <div style={{ fontSize: '11px', marginTop: '8px', opacity: 0.7 }}>
+              Amount to collect: ₹{grandTotal.toFixed(2)}
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleBill} style={styles.form}>
           <div>
             <label style={styles.label}>{t.customerName}</label>
@@ -471,6 +586,7 @@ function BillingView({ lang, t, theme, inventory }) {
             <label style={styles.label}>{t.checkoutMode}</label>
             <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }}>
               <option value="CASH">{t.cashMode}</option>
+              <option value="UPI">{t.upiMode}</option>
               <option value="KHATA">{t.khataMode}</option>
             </select>
           </div>
@@ -482,51 +598,171 @@ function BillingView({ lang, t, theme, inventory }) {
   );
 }
 
-function OCRView({ t, theme }) {
-  const [imagePreview, setImagePreview] = useState(null);
-  const [scanning, setScanning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [extractedData, setExtractedData] = useState(null);
+function ExpensesView({ t, theme, expenses, setExpenses }) {
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('Utilities');
+  const [editingId, setEditingId] = useState(null); // Tracks if we are editing an expense
+  const [msg, setMsg] = useState({ text: '', type: '' });
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImagePreview(URL.createObjectURL(file));
-      runOCR();
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (!description.trim() || isNaN(parseFloat(amount))) return;
+
+    if (editingId) {
+      // Update existing expense
+      setExpenses(prev => prev.map(exp => 
+        exp.id === editingId ? { ...exp, description, amount: parseFloat(amount), category } : exp
+      ));
+      setMsg({ text: t.expenseUpdateSuccess, type: 'success' });
+      setEditingId(null);
+    } else {
+      // Create new expense
+      const newExpense = {
+        id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+        description,
+        amount: parseFloat(amount),
+        category,
+        date: new Date()
+      };
+      setExpenses(prev => [newExpense, ...prev]);
+      setMsg({ text: t.expenseSuccess, type: 'success' });
+    }
+
+    setDescription('');
+    setAmount('');
+    setCategory('Utilities');
+  };
+
+  const startEdit = (exp) => {
+    setEditingId(exp.id);
+    setDescription(exp.description);
+    setAmount(exp.amount.toString());
+    setCategory(exp.category);
+    setMsg({ text: '', type: '' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setDescription('');
+    setAmount('');
+    setCategory('Utilities');
+    setMsg({ text: '', type: '' });
+  };
+
+  const deleteExpense = (id) => {
+    setExpenses(prev => prev.filter(exp => exp.id !== id));
+    if (editingId === id) {
+      cancelEdit();
     }
   };
 
-  const runOCR = () => {
-    setScanning(true);
-    setProgress(50);
-    setTimeout(() => {
-      setScanning(false);
-      setProgress(100);
-      setExtractedData({ extractedStore: 'Retail Store', extractedAmount: 150.00, extractedPhone: '9876543210' });
-    }, 1000);
-  };
+  const totalExpenseSum = expenses.reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
-    <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border, maxWidth: '650px', margin: 'auto' }}>
-      <h2 style={styles.cardTitle}>{t.ocrTitle}</h2>
-      <p style={styles.subText}>{t.ocrSub}</p>
-      <input type="file" accept="image/*" onChange={handleImageUpload} style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border, marginBottom: '15px' }} />
-      {imagePreview && <div style={{ textAlign: 'center', marginBottom: '15px' }}><img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px' }} /></div>}
-      {scanning && <p style={{ fontWeight: 'bold', textAlign: 'center' }}>{t.scanningText} {progress}%</p>}
-      {extractedData && (
-        <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '6px', border: `1px solid ${theme.border}` }}>
-          <h3 style={{ color: '#10b981', margin: '0 0 10px 0', fontSize: '15px' }}>{t.extractedHeading}</h3>
-          <p><strong>{t.storeNameLabel}</strong> {extractedData.extractedStore}</p>
-          <p><strong>{t.totalAmountLabel}</strong> ₹{extractedData.extractedAmount.toFixed(2)}</p>
-          <p><strong>{t.phoneNumLabel}</strong> {extractedData.extractedPhone}</p>
+    <div style={styles.gridContainer}>
+      <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border }}>
+        <h2 style={styles.cardTitle}>
+          {editingId ? t.updateExpenseBtn : t.expenseTitle}
+        </h2>
+        <form onSubmit={handleFormSubmit} style={styles.form}>
+          <div>
+            <label style={styles.label}>{t.descLabel}</label>
+            <input 
+              type="text" 
+              value={description} 
+              onChange={e => setDescription(e.target.value)} 
+              placeholder={t.descPlaceholder} 
+              required 
+              style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} 
+            />
+          </div>
+          <div>
+            <label style={styles.label}>{t.amountLabel}</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              value={amount} 
+              onChange={e => setAmount(e.target.value)} 
+              placeholder={t.amountPlaceholder} 
+              required 
+              style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }} 
+            />
+          </div>
+          <div>
+            <label style={styles.label}>{t.categoryLabel}</label>
+            <select 
+              value={category} 
+              onChange={e => setCategory(e.target.value)} 
+              style={{ ...styles.input, background: theme.inputBg, color: theme.text, borderColor: theme.border }}
+            >
+              <option value="Utilities">{t.catUtilities}</option>
+              <option value="Supplies">{t.catSupply}</option>
+              <option value="Miscellaneous">{t.catMisc}</option>
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="submit" style={{ ...styles.submitBtn, flex: 1 }}>
+              {editingId ? t.updateExpenseBtn : t.addExpenseBtn}
+            </button>
+            {editingId && (
+              <button 
+                type="button" 
+                onClick={cancelEdit} 
+                style={{ background: '#64748b', color: '#fff', border: 'none', padding: '12px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                {t.cancelEditBtn}
+              </button>
+            )}
+          </div>
+
+          {msg.text && <p style={{ color: msg.type === 'success' ? '#10b981' : '#ef4444', margin: 0, fontSize: '13px' }}>{msg.text}</p>}
+        </form>
+      </div>
+
+      <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h2 style={styles.cardTitle}>{t.recentExpenses}</h2>
+          <span style={{ background: '#ef4444', color: '#fff', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+            {t.totalExpenses}: ₹{totalExpenseSum.toFixed(2)}
+          </span>
         </div>
-      )}
+        {expenses.length === 0 ? <p style={styles.subText}>{t.noExpenses}</p> : (
+          expenses.map(exp => (
+            <div key={exp.id} style={{ ...styles.tableRow, borderColor: theme.border, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong>{exp.description}</strong>
+                <div style={{ fontSize: '12px', opacity: 0.7 }}>{exp.category} • {new Date(exp.date).toLocaleDateString()}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#ef4444' }}>-₹{exp.amount.toFixed(2)}</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => startEdit(exp)} 
+                    style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    {t.editBtn}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => deleteExpense(exp.id)} 
+                    style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    {t.deleteBtn}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
-function KhataView({ t, theme }) {
-  const [khataList, setKhataList] = useState([]);
+function KhataView({ t, theme, khataList, setKhataList }) {
   const markAsPaid = (id) => setKhataList(prev => prev.filter(k => k._id !== id));
 
   return (
@@ -534,9 +770,12 @@ function KhataView({ t, theme }) {
       <h2 style={styles.cardTitle}>{t.khataTitle}</h2>
       {khataList.length === 0 ? <p style={styles.subText}>{t.noKhata}</p> : (
         khataList.map(k => (
-          <div key={k._id} style={{ ...styles.tableRow, borderColor: theme.border, display: 'flex', justifyContent: 'space-align' }}>
-            <div><strong>{k.customerName}</strong> ({k.phoneNumber})</div>
-            <button type="button" onClick={() => markAsPaid(k._id)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>{t.markPaid}</button>
+          <div key={k._id} style={{ ...styles.tableRow, borderColor: theme.border, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <strong>{k.customerName}</strong> ({k.phoneNumber})
+              <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '13px' }}>Due: ₹{k.amount.toFixed(2)}</div>
+            </div>
+            <button type="button" onClick={() => markAsPaid(k._id)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>{t.markPaid}</button>
           </div>
         ))
       )}
@@ -544,14 +783,26 @@ function KhataView({ t, theme }) {
   );
 }
 
-function ReportsView({ t, theme, inventory }) {
-  const [report] = useState({ totalRevenue: 1700.00, netBalance: 1700.00 });
-  const [transactions, setTransactions] = useState([
-    { id: '1', store: 'Main Store', phoneNumber: '9876543210', date: new Date(), type: 'CREDIT', displayAmount: '+₹1,250.00' },
-    { id: '2', store: 'Main Store', phoneNumber: '9123456789', date: new Date(), type: 'CREDIT', displayAmount: '+₹450.00' }
-  ]);
-
+function ReportsView({ t, theme, inventory, transactions, report, totalExpenses, netBalance }) {
   const totalInventoryCost = inventory.reduce((sum, item) => sum + (Number(item.price) * Number(item.stock)), 0);
+
+  const getBadgeStyle = (type) => {
+    let bg = '#3b82f6';
+    if (type === 'UPI') bg = '#8b5cf6';
+    if (type === 'KHATA') bg = '#f59e0b';
+
+    return {
+      display: 'inline-block',
+      padding: '2px 8px',
+      borderRadius: '4px',
+      fontSize: '11px',
+      fontWeight: 'bold',
+      color: '#fff',
+      backgroundColor: bg,
+      marginLeft: '8px',
+      textTransform: 'uppercase'
+    };
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -562,9 +813,13 @@ function ReportsView({ t, theme, inventory }) {
             <p style={styles.subText}>{t.totalRevenue}</p>
             <h3 style={{ color: '#10b981', margin: '5px 0 0' }}>+₹{report.totalRevenue.toFixed(2)}</h3>
           </div>
+          <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
+            <p style={styles.subText}>{t.totalExpenses}</p>
+            <h3 style={{ color: '#ef4444', margin: '5px 0 0' }}>-₹{totalExpenses.toFixed(2)}</h3>
+          </div>
           <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3b82f6' }}>
             <p style={styles.subText}>{t.netBalance}</p>
-            <h3 style={{ color: '#3b82f6', margin: '5px 0 0' }}>₹{report.netBalance.toFixed(2)}</h3>
+            <h3 style={{ color: '#3b82f6', margin: '5px 0 0' }}>₹{netBalance.toFixed(2)}</h3>
           </div>
           <div style={{ background: theme.inputBg, padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
             <p style={styles.subText}>{t.totalInventoryCost}</p>
@@ -574,18 +829,20 @@ function ReportsView({ t, theme, inventory }) {
       </div>
 
       <div style={{ ...styles.card, background: theme.cardBg, borderColor: theme.border }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={styles.cardTitle}>{t.recentLedger}</h2>
-          <button onClick={() => {}} style={styles.submitBtn}>{t.refreshLedger}</button>
-        </div>
+        <h2 style={styles.cardTitle}>{t.recentLedger}</h2>
         {transactions.length === 0 ? <p style={styles.subText}>{t.noTransactions}</p> : (
           transactions.map(tx => (
             <div key={tx.id} style={{ ...styles.tableRow, borderColor: theme.border, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <strong>{tx.store}</strong>
-                <div style={{ fontSize: '12px', opacity: 0.7 }}>Phone: {tx.phoneNumber} • {new Date(tx.date).toLocaleDateString()}</div>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <strong>{tx.store}</strong>
+                  <span style={getBadgeStyle(tx.type)}>{tx.type}</span>
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>Phone: {tx.phoneNumber} • {new Date(tx.date).toLocaleDateString()}</div>
               </div>
-              <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#10b981' }}>{tx.displayAmount}</div>
+              <div style={{ fontWeight: 'bold', fontSize: '16px', color: tx.type === 'KHATA' ? '#f59e0b' : '#10b981' }}>
+                {tx.displayAmount}
+              </div>
             </div>
           ))
         )}
