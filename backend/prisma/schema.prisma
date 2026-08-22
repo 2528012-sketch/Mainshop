@@ -1,0 +1,68 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model StoreProfile {
+  id           String          @id @default(uuid())
+  shopName     String          @default("The Shopkeeper's Daily Mart")
+  ownerName    String          @default("Rajesh Kumar")
+  phone        String          @default("9876543210")
+  email        String?         @default("rajesh@mart.com")
+  address      String?         @default("14/2 Park Street, Kolkata")
+  gstin        String?         @default("19AABCT1332L1ZS")
+  upiId        String?         @default("rajesh@upi")
+  inventory    InventoryItem[]
+  transactions Transaction[]
+  khataRecords KhataCustomer[]
+  createdAt    DateTime        @default(now())
+}
+
+model InventoryItem {
+  id           String            @id @default(uuid())
+  storeId      String
+  store        StoreProfile      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name         String
+  price        Decimal           @db.Decimal(10, 2)
+  stock        Int
+  threshold    Int               @default(5)
+  cartItems    TransactionItem[]
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  storeId       String
+  store         StoreProfile      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerName  String            @default("Walk-in Customer")
+  subtotal      Decimal           @db.Decimal(10, 2)
+  gst           Decimal           @db.Decimal(10, 2)
+  total         Decimal           @db.Decimal(10, 2)
+  paymentMethod String
+  items         TransactionItem[]
+  createdAt     DateTime          @default(now())
+}
+
+model TransactionItem {
+  id            String         @id @default(uuid())
+  transactionId String
+  transaction   Transaction    @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  inventoryId   String?
+  inventoryItem InventoryItem? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+  name          String
+  qty           Int
+  unitPrice     Decimal        @db.Decimal(10, 2)
+}
+
+model KhataCustomer {
+  id          String   @id @default(uuid())
+  storeId     String
+  store       StoreProfile @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer    String
+  phone       String
+  balanceDue  Decimal  @db.Decimal(10, 2) @default(0.00)
+  lastUpdated DateTime @updatedAt
+}
